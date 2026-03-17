@@ -1,0 +1,28 @@
+# minimum .gitignore
+.DS_Store
+.env
+.cache
+*.pickle
+__pycache__/
+venv
+wandb
+logs/
+.pyc
+.venv
+
+data/
+value_head_probes/
+
+*.egg-info/
+**/*.egg-info/
+
+
+# logs
+cluster/log/*
+log/*
+build/*
+.vscode/launch.json
+
+# hydra
+multirun/
+outputs/
