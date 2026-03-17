@@ -40,7 +40,24 @@ Installation on Clariden:
 ```
 TODO...
 ```
+## Known Issues & Workarounds
+To run Apertus, we need `transformers=0.46`. This is conflicted with `safetytooling` version that we use. It is best for now to install latest version of `transformers` manually, after installation.
+
+TODO...
 
 
 
 
+## License
+
+Apache 2.0 — see LICENSE.md.
+
+
+## Acknowledgements
+
+This repo is created by Tymoteusz Kwieciński and supervised by Anna Hedstrom and Imanol Schlag.
+
+It was developed initailly as a project for Large Scale AI Engineering together with Klejdi Sevdari, Michał Korniak and Jack Peck.
+This is the [repo](https://github.com/sevdari/hallucination_probes) of this project.
+
+The intial project was developed as an extension of the paper [*Real-Time Detection of Hallucinated Entities in Long-Form Generation* Obeso et. al.](https://arxiv.org/abs/2509.03531).
