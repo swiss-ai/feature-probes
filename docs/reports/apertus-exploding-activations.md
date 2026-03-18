@@ -226,17 +226,18 @@ The final performance metrics are summarized below:
 | Mean final training loss | 8.236 | 0.232 | 97.2% lower |
 | Seed-level loss std (avg over layers) | 11.887 | 0.099 | 72.2% lower |
 
-To add additional context, baseline Llama-3.1-8B-Instruct  run has mean final loss equal to 0.480.
+To add additional context, baseline Llama-3.1-8B-Instruct  run has mean final loss equal to 0.480 - the solutions that I used to mitigate the problem of exploding activations managed to reduce the loss magnitude and reach even lower loss than baseline solution for Llama-3.1-8B-Instruct.
 
 ## Summary
 
 In this short doc, I showcased how *active interpretability* approach can help in improving the performance of machine learning models. I went through a simple observation, to problem diagnostics, setting the hypothesis and finding the solution to the discovered problem. 
 
-The best performing probe is one with all the solutions implemented jointly:
+
+## Acknowledgements
+
+I would like to thank Anna Hedström for supervision in the project.
 
 
-
-In the next post, I will actually look into the performance of different versions of hallucination probes, hoping that such probes could be used in the producion.
 
 
 

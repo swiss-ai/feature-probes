@@ -1,0 +1,43 @@
+# @package _global_
+dataset:
+  short_name: "kl=0.5_our"
+
+lambda_lm: 0.0
+lambda_kl: 0.5
+
+train_datasets:
+  - dataset_id: "longfact_train"
+    hf_repo: "tymciurymciu/longfact-test-split"
+    subset: "${model.data_subset}"  
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+# Eval datasets are identical across all your runs, so they stay hardcoded here
+eval_datasets:
+  - dataset_id: "longfact_test_llama"
+    hf_repo: "tymciurymciu/longfact-test-split"
+    subset: "Meta_Llama_3.1_8B_Instruct"
+    split: "test"
+    max_length: 1536
+    pos_weight: 10.0
+    neg_weight: 10.0
+    default_ignore: false
+    shuffle: false
+
+  - dataset_id: "longfact_test_apertus"
+    hf_repo: "tymciurymciu/longfact-test-split"
+    subset: "Apertus_8B_Instruct_2509"
+    split: "test"
+    max_length: 1536
+    pos_weight: 10.0
+    neg_weight: 10.0
+    default_ignore: false
+    shuffle: false

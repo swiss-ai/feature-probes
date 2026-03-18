@@ -1,0 +1,22 @@
+# @package _global_
+
+training:
+  short_name: "apertus_stability"
+
+# Keep LM in bf16 for throughput, run probe in fp32 for stability.
+model_dtype: "bfloat16"
+
+probe_config:
+  lora_layers: "none"
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  probe_dtype: "float32"
+  normalize_before_head: "layernorm"
+
+# Suggested learning-rate candidates for Apertus probe sweeps:
+# 3e-4, 1e-4, 3e-5
+# Run with Hydra multirun, e.g.:
+# python probe/train.py model=apertus training=apertus_stability_fp32 dataset=our_long_form probe_head_lr=3e-4,1e-4,3e-5
+probe_head_lr: 1e-4
+lora_lr: 1e-4

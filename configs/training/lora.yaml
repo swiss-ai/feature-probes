@@ -1,0 +1,13 @@
+# @package _global_
+
+training:
+  short_name: "no_lora"
+
+probe_config:
+  lora_layers: "none"
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+
+probe_head_lr: 1e-3
+lora_lr: 1e-4

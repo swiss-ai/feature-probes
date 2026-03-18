@@ -1,0 +1,5 @@
+short_name: "apertus"
+data_subset: "Apertus_8B_Instruct_2509"
+
+probe_config:
+  model_name: "swiss-ai/Apertus-8B-Instruct-2509"

@@ -2,8 +2,9 @@
 
 This repo contains the implementation of feature probes, for now used for detecting entity-based hallucinations in long-form text. 
 
+---
 
-Please note that this is still *work in progress*. The whole code probably will be refactored soon ;).
+Please note that this is still *work in progress*. The whole code probably will be ~~refactored~~ uploaded soon ;).
 
 ## Background 
 
@@ -55,9 +56,10 @@ Apache 2.0 — see LICENSE.md.
 
 ## Acknowledgements
 
-This repo is created by Tymoteusz Kwieciński and supervised by Anna Hedstrom and Imanol Schlag.
+This repo is created by Tymoteusz Kwieciński and supervised by Anna Hedström and Imanol Schlag.
 
 It was developed initailly as a project for Large Scale AI Engineering together with Klejdi Sevdari, Michał Korniak and Jack Peck.
+
 This is the [repo](https://github.com/sevdari/hallucination_probes) of this project.
 
 The intial project was developed as an extension of the paper [*Real-Time Detection of Hallucinated Entities in Long-Form Generation* Obeso et. al.](https://arxiv.org/abs/2509.03531).

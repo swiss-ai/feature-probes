@@ -1,0 +1,36 @@
+defaults:
+  - model: llama
+  - training: no_lora
+  - dataset: our_long_form
+  - _self_
+
+probe_config:
+  probe_id: "${model.short_name}_${training.short_name}_${dataset.short_name}_layer${probe_config.layer}_attn"
+  model_name: "${model.probe_config.model_name}"
+  layer: 30
+  load_from: null
+  hf_repo_id: "obalcells/hallucination-probes"
+  threshold: 0.5
+  context_window_size: 3
+  attention_probe_n_heads: 4
+
+wandb_project: "hallucination-probes"
+
+upload_to_hf: false
+save_evaluation_metrics: true
+save_roc_curves: false
+dump_raw_eval_results: false
+
+# Training hyperparameters
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 4
+high_loss_threshold: null
+anneal_max_aggr: true
+anneal_warmup: 1.0
+probe_head_lr: 1e-3
+lora_lr: 1e-4
+enable_gradient_checkpointing: true
+gradient_accumulation_steps: 1
+max_grad_norm: 1.0
+logging_steps: 10
+seed: 42
