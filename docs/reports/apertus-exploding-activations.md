@@ -111,7 +111,7 @@ While working on the project, we noticed that the probe trained on Apertus-8B-In
 ![layers](./media/layers.png)
 
 
-As you can see in the plot above, the Apertus-8B-Instruct-2509 probe performance drops significantly, after 16th layer. Final training loss also explodes around that layer. What is even more suprising, is that the probe trained on activations from Llama-8B-Instruct performs much better than the probe trained on the Apertus-8B-Instruct-2509 activations!.
+As you can see in the plot above, the Apertus-8B-Instruct-2509 probe performance drops significantly, after 16th layer. Final training loss also explodes around that layer. What is even more suprising, is that the probe trained on activations from Llama-8B-Instruct performs much better than the probe trained on the Apertus-8B-Instruct-2509 activations!
 
 
 ## Diagnosing the Instability
@@ -119,8 +119,7 @@ As you can see in the plot above, the Apertus-8B-Instruct-2509 probe performance
 ### Loss scale comparison
 The cross-entropy loss for probe trained on Apertus activations is ~100x larger and much more spiky than for probe trained on Llama.
 
-!here a plot of loss curves
-
+![loss](./media/loss.png)
 
 The plot above shows the scale. Even though the loss is much larger in scale, the training converges.
 
@@ -130,7 +129,7 @@ I also looked again into the dataset validity. Both datasets are valid, they con
 
 I compared our versions of the datasets with the ones from the paper and verified if there are no leaks between the training-test split. Additionally I manually verified few datapoints from each dataset version and tried to verify if there are no suprising artifacts, differences or any distribution shifts.
 
-![dataset parameters]({F6DE9447-AD38-419D-B2E3-68F9FB551F91}.png)
+![dataset parameters](./media/dataset-stats.png)
 
 ? i need to copy that to md and maybe color code it?
 
@@ -207,10 +206,27 @@ As described in the reproduced paper, LoRA help improving the probe performance 
 
 
 
-!plot
+![lora](./media/lora-apertus.png)
 
 In the plot above, we can see that applying LoRA, selected learning rate, layernorm and better precision improved the probe performance and stabilized it.
 
+### Total solution
+
+The final performance metrics are summarized below:
+
+| Probe model (train) | Evaluation set | Metric | Baseline mean | Full-solution mean | Absolute improvement |
+|---|---|---|---:|---:|---:|
+| Apertus-8B-Instruct-2509 | Apertus-8B-Instruct-2509 | AUC | 0.7025 | 0.8961 | +0.1935 |
+| Apertus-8B-Instruct-2509 | Apertus-8B-Instruct-2509 | R@0.1 | 0.3837 | 0.6802 | +0.2966 |
+
+### Stability summary 
+
+| Stability indicator | Baseline | Full-solution | Change |
+|---|---:|---:|---:|
+| Mean final training loss | 8.236 | 0.232 | 97.2% lower |
+| Seed-level loss std (avg over layers) | 11.887 | 0.099 | 72.2% lower |
+
+To add additional context, baseline Llama-3.1-8B-Instruct  run has mean final loss equal to 0.480.
 
 ## Summary
 
