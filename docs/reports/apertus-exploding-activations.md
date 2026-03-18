@@ -7,7 +7,7 @@
 
 ## TL;DR
 
-This post covers the investigation process why hallucination probes trained on Apertus-8B-Instruct-2509 were significantly less stable than probes trained on Llama-3.1-Instruct. The main sympthom was a really strong degradation of probe quality in deeper layers and much noisier training loss. I formulated the hypothesis that the worse performance comes from exploding activations in deeper layers of Apertus-8B-Instruct-2509 model and proposed few fixes, improving the overall probe performance from 
+This post covers the investigation process why hallucination probes trained on Apertus-8B-Instruct-2509 were significantly less stable than probes trained on Llama-3.1-Instruct. The main sympthom was a really strong degradation of probe quality in deeper layers and much noisier training loss. I formulated the hypothesis that the worse performance comes from exploding activations in deeper layers of Apertus-8B-Instruct-2509 model and proposed few fixes, improving the overall probe performance from 0.7025 to 	0.8961 AUC and 0.3837 to 0.6802 recall at 0.1 false positive ratio.
 
 ---
 
@@ -21,7 +21,7 @@ As a part of Large Scale AI Enginering course we reproduced the paper [Real-Time
 
 
 
-Probes trained in the paper are used to detect hallucinated entities in the long-form text. This task is meant to reasemble the usual conversation with the model. A probe in this context is a small model trained on top of an LLM activations from a given layer, which performs a per-token classification task. In our setting, the probe was predicting whether a given token from the text is a hallucination or not. Probes were trained on long-form datasets to reasemble a real conversation with the model.
+Probes trained in the paper are used to detect hallucinated entities in the long-form text. This task is meant to reasemble the usual conversation with the model. A probe in this context is a small model trained on top of an LLM activations from a given layer, which performs a per-token classification task. In our setting, the probe was predicting whether a given token from the text is a hallucination or not. 
 
 
 ### The dataset description
