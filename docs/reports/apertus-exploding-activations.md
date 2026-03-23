@@ -82,6 +82,8 @@ Below you can see the annoated spans - fragments of text that were confirmed to 
 The dataset `[LongFact++](https://huggingface.co/datasets/obalcells/longfact-annotations)`, which was used in the paper to train hallucination probes was collected in 3 steps:
 1. Question prompt collection
 2. Model's answers generation
+
+
 3. Generation annotation using larger LLM with websearch tool
 
 The questions were generated to cover a wide area of general knowledge. The main source of questions was the `[LongFact](https://arxiv.org/abs/2403.18802)` dataset collected by Google, containing a corpus of similar questions. Authors of the reproduced paper generated 20k such questions accross different topics of knowledge. 
@@ -129,10 +131,19 @@ I also looked again into the dataset validity. Both datasets are valid, they con
 
 I compared our versions of the datasets with the ones from the paper and verified if there are no leaks between the training-test split. Additionally I manually verified few datapoints from each dataset version and tried to verify if there are no suprising artifacts, differences or any distribution shifts.
 
-![dataset parameters](./media/dataset-stats.png)
 
-? i need to copy that to md and maybe color code it?
 
+| Source | Model | Split | Rows | Spans/Row | Invalid Rate | Halluc. Rate | Completion Length (mean) | Completion Length (median) | Span Length (mean) | Span Length (90th percentile) |
+|:-------|:--------------|:------|-------:|----------:|-------------:|-------------:|------------------:|-----------------:|----------------:|---------------:|
+| ours | Apertus-8B | train | 17,986 | 9.59 | 0.025 | 0.236 | 3,014 | 2,778 | 25.66 | 52 |
+| ours | Apertus-8B | test | 1,993 | 9.61 | 0.025 | 0.240 | 2,987 | 2,733 | 26.08 | 54 |
+| ours | Llama-3.1-8B | train | 17,959 | 11.99 | 0.028 | 0.264 | 3,918 | 3,728 | 25.31 | 50 |
+| ours | Llama-3.1-8B | test | 1,996 | 11.78 | 0.029 | 0.269 | 3,915 | 3,708 | 25.71 | 50 |
+| paper | Llama-3.3-70B | train | 7,959 | 15.59 | 0.021 | 0.261 | 3,890 | 3,735 | 20.72 | 41 |
+| paper | Llama-3.1-8B | train | 7,919 | 14.44 | 0.023 | 0.367 | 3,687 | 3,474 | 22.43 | 45 |
+| paper | Mistral-24B | train | 1,534 | 14.20 | 0.034 | 0.170 | 3,567 | 3,560 | 19.87 | 39 |
+| paper | Qwen2.5-7B | train | 1,524 | 12.64 | 0.045 | 0.350 | 3,782 | 3,757 | 21.60 | 43 |
+| paper | Gemma-2-9B | train | 1,495 | 10.94 | 0.048 | 0.186 | 2,837 | 2,781 | 19.47 | 37 |
 
 After all, the problem with instabliity and decreasing performance was not in the dataset.
 
@@ -143,7 +154,15 @@ It was possible to create a good classifier for the data (the probe trained on L
 ![layers](./media/activations.png)
 
 
-? this plot is to be fixed
+
+### Activations norm
+
+Finally, I directly analysed the norm of per-layer mean norm of activations. As you can see in the plot below, activations in the Apertus model have much higher values than the values from Llama model. 
+
+![layers](./media/explosion.png)
+
+As can be seen below, the norm of Apertus activations is ~100 times larger than the norm of Llama activations, which matches the scale of loss difference
+
 ## Hypothesis
 
 **Exploding activations** - activations in Apertus are very large, particularly in deeper layers.
@@ -218,7 +237,7 @@ The final performance metrics are summarized below:
 |---|---|---|---:|---:|---:|
 | Apertus-8B-Instruct-2509 | Apertus-8B-Instruct-2509 | AUC | 0.7025 | 0.8961 | +0.1935 |
 | Apertus-8B-Instruct-2509 | Apertus-8B-Instruct-2509 | R@0.1 | 0.3837 | 0.6802 | +0.2966 |
-
+ 
 ### Stability summary 
 
 | Stability indicator | Baseline | Full-solution | Change |
