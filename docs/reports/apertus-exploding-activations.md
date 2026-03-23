@@ -79,14 +79,14 @@ Below you can see the annoated spans - fragments of text that were confirmed to 
 ---
 
 
-The dataset `[LongFact++](https://huggingface.co/datasets/obalcells/longfact-annotations)`, which was used in the paper to train hallucination probes was collected in 3 steps:
+The dataset [`LongFact++`](https://huggingface.co/datasets/obalcells/longfact-annotations), which was used in the paper to train hallucination probes was collected in 3 steps:
 1. Question prompt collection
 2. Model's answers generation
 
 
 3. Generation annotation using larger LLM with websearch tool
 
-The questions were generated to cover a wide area of general knowledge. The main source of questions was the `[LongFact](https://arxiv.org/abs/2403.18802)` dataset collected by Google, containing a corpus of similar questions. Authors of the reproduced paper generated 20k such questions accross different topics of knowledge. 
+The questions were generated to cover a wide area of general knowledge. The main source of questions was the [`LongFact`](https://arxiv.org/abs/2403.18802) dataset collected by Google, containing a corpus of similar questions. Authors of the reproduced paper generated 20k such questions accross different topics of knowledge. 
 
 Then, they generated the models answers using a *generation pipeline*. They used various open-source models such as Llama-8B-Instruct, Llama-70B-Instruct, Mistral-Small-24B-Instruct-2501, etc.
 
