@@ -1,18 +1,21 @@
 #!/bin/bash
 #SBATCH --account=infra01
-#SBATCH -p debug
+#SBATCH -p normal
 #SBATCH --time=01:00:00
-#SBATCH --job-name=build-uv-hallucination
-#SBATCH --output=/iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/log/build-uv-hallucination-%j.out
-#SBATCH --error=/iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/log/build-uv-hallucination-%j.err
+#SBATCH --job-name=build-feature-probes
+#SBATCH --output=log/%x-%j.out
+#SBATCH --error=log/%x-%j.err
+
+TAG="feature-probes:base"
+TAG_FILE_NAME="feature-probes+25.06.sqsh"
+CE_IMAGE_DIR=${SCRATCH}/ce-images/
 
 set -euo pipefail
 
-cd /iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/clariden
-podman build -t uv-hallucination:py-3.10 .
+cd $SCRATCH/feature-probes/cluster
+podman build --no-cache -t $TAG .
 
-cd /capstor/scratch/cscs/tkwiecinski/hallucination-probes/
+mkdir -p ${CE_IMAGE_DIR}
+cd ${CE_IMAGE_DIR}
 
-rm -f base.sqsh
-
-enroot import -o base.sqsh podman://uv-hallucination:py-3.10
+enroot import -o $TAG_FILE_NAME podman://$TAG

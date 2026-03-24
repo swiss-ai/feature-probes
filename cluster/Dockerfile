@@ -1,18 +1,18 @@
-FROM nvcr.io/nvidia/pytorch:24.10-py3
+FROM nvcr.io/nvidia/pytorch:25.06-py3
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.6.6 /uv /uvx /bin/
 
 WORKDIR /workspace
 
 # Copy your project
-RUN git clone https://github.com/sevdari/hallucination_probes.git
-WORKDIR /workspace/hallucination_probes
+RUN git clone https://github.com/swiss-ai/feature-probes.git
+WORKDIR /workspace/feature-probes
 
-# Install your package into system Python without dependencies
-# (torch from NVIDIA image stays untouched)
-RUN uv pip install  . --system
+RUN git pull origin 
 
-# library safety tools does not really like the latest transformers
-RUN uv pip install transformers==4.56.0 --system
+RUN uv pip install -e . --system --break-system-packages
+
+ENV CUDA_CACHE_DISABLE=1
+
 
 CMD ["/bin/bash"]
