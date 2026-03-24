@@ -7,10 +7,10 @@ requires-python = ">=3.10,<3.13"
 
 dependencies = [
   "torch>=2.4.0",
-  "transformers>=4.50.0", # 4.56.0 is required for apertus api, but safetytooling does not like this
+  "transformers>=4.56.0", # 4.56.0 is required for apertus api, but safetytooling does not like this
   "peft>=0.5.0,<=0.17.1",
   "datasets>=2.0.0",
-  "numpy>=1.24.0,<2",
+  "numpy>=1.24.0",
   "tqdm>=4.65.0",
   "pyyaml>=6.0",
   "python-dotenv>=1.0.0",
@@ -20,13 +20,6 @@ dependencies = [
   "matplotlib>=3.7.0",
   "seaborn>=0.12.0",
   "huggingface_hub>=0.20.0",
-  # Annotation pipeline
-  "anthropic>=0.36.0",
-  "simple-parsing>=0.1.5",
-  "pydantic>=2.6.0",
-  "rouge-score>=0.1.2",
-  # install safetytooling directly from Git for pip
-  "safetytooling @ git+https://github.com/safety-research/safety-tooling@100cf43b4935465e6bb5428011734fa6c622d5a7",
 
   "plotly>=5.22.0",
   "accelerate>=0.20.0",
@@ -53,9 +46,6 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv.sources]
-# uv will install safetytooling from this git repo when requested
-safetytooling = { git = "https://github.com/safety-research/safety-tooling.git", rev = "main" }
-
 torch = [
   { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
