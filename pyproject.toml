@@ -43,15 +43,8 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = [ "." ]
 include = [
-  "probe",
-  "probe.*",
-  "annotation_pipeline",
-  "annotation_pipeline.*",
-  "demo",
-  "demo.*",
-  "utils",
-  "utils.*",
-  "configs",
+  "feature_probes",
+  "feature_probes.*"
 ]
 namespaces = true
 
