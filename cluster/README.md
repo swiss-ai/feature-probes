@@ -1,16 +1,76 @@
-## some config files
-there are some config files related to the clariden cluster, e.g. [Dockerfile](./Dockerfile) of the image, should be some sbatch scripts etc.
+# Clariden Cluster
 
-### build
-the files (env.toml, Dockerfile, build.sbatch) are related to creating the clariden environment. 
+This directory contains the environment definition and job scripts for running
+experiments on the [Clariden](https://docs.cscs.ch/clusters/clariden/) cluster at CSCS.
+Clariden is part of the [Alps](https://docs.cscs.ch/alps/) platform and uses
+GH200 nodes with the
+[Container Engine](https://docs.cscs.ch/software/container-engine/) (CE) as the primary
+runtime.
 
-The base `.sqsh` image with main branch cloned is saved at `/capstor/scratch/cscs/tkwiecinski/hallucination-probes/base.sqsh`. It might not have the latest repo version though. 
+## Files
 
-Notice, that there is no uv env installed in the container, there is just a global env, so don't run `uv sync`.
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Container image built on top of NGC PyTorch 25.06 |
+| `build.sbatch` | Builds the image and exports it as a `.sqsh` file to `$SCRATCH/ce-images/` |
+| `env.toml` | [Environment Definition File](https://docs.cscs.ch/software/container-engine/run/); defines mounts, env vars, NCCL hooks |
+| `train.sbatch` | Single training run (draft) |
+| `train_multirun.sbatch` | Parallel sweep across a GPU array (draft) |
 
-### running the jobs
+## Environment Design
 
-[train.sbatch](./train.sbatch) can be used to run a sbatch job on the cluster
-when it comes to setting up an interactive session, clariden docs are reaaally useful
+The environment is split into two layers:
 
-To enable logging to huggingface, create a file `~/keys/hf_token` with your token.
+```
+Image (.sqsh)  — rebuilt only when pyproject.toml changes
+──────────────────────────────────────────────────────────
+NGC PyTorch 25.06-py3 (torch, transformers, numpy, ...)
++ extra deps installed via uv (wandb, hydra, peft, ...)
+
+Mounted at runtime via env.toml
+──────────────────────────────────────────────────────────
+$SCRATCH/feature-probes/        ← source code (git pull to update)
+~/keys/                  ← HF / W&B tokens
+/capstor/scratch/$USER/  ← HF cache, probe checkpoints
+```
+
+Code changes never require a rebuild — only `pyproject.toml` changes do, such as adding new dependencies.
+
+> Please note, that this environment contains only the training scripts, not the `annotation` and `generation` pipeline also used in the [old repo](https://github.com/sevdari/hallucination_probes).
+
+## First-Time Setup
+
+**1. Create the image directory with Lustre striping** ([required by CSCS](https://docs.cscs.ch/software/container-engine/run/)):
+```bash
+mkdir -p $SCRATCH/ce-images
+lfs setstripe -E 4M -c 1 -E 64M -c 4 -E -1 -c -1 -S 4M $SCRATCH/ce-images
+```
+
+**2. Store your API keys:**
+```bash
+mkdir -p ~/keys
+echo "hf_..." > ~/keys/.hf_token
+echo "..." > ~/keys/.wandb_key
+echo "hf_..." > ~/keys/.hf_token_write  # optional, only for HF uploads
+```
+
+**3. Build the image:**
+```bash
+sbatch cluster/build.sbatch
+```
+
+> Note: optionally, you can 'borrow' an existing `enroot` image, e.g. from here: `/iopsstor/scratch/cscs/tkwiecinski/ce-images/feature-probes+25.06.sqsh`
+
+**4. Submit a training job:**
+```bash
+sbatch cluster/train.sbatch
+```
+
+## Rebuilding vs. Updating Code
+
+| What changed | Action needed |
+|---|---|
+| Source code | `git pull` inside the running container — no rebuild |
+| `pyproject.toml` (new dep) | `sbatch cluster/build.sbatch` |
+| Base image tag | Update `FROM` in `Dockerfile`, then rebuild |
+
