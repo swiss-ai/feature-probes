@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Union, Literal
 
-from utils.probe_loader import LOCAL_PROBES_DIR
-from utils.model_utils import get_num_layers
-from probe.dataset import TokenizedProbingDatasetConfig
+from feature_probes.utils.probe_loader import LOCAL_PROBES_DIR
+from feature_probes.utils.model_utils import get_num_layers
+from feature_probes.data.dataset import TokenizedProbingDatasetConfig
 
 @dataclass
 class ProbeConfig:
     """Configuration for a probe model."""
-    probe_id: str = "llama3_1_8b_lora_lambda_kl=0.5"
+    probe_id: str = "probe"  
     
     model_name: str = "meta-llama/Meta-Llama-3.1-8B-Instruct"
     layer: Optional[int] = None  # Which layer to attach the probe to
@@ -25,7 +25,7 @@ class ProbeConfig:
     # Loading configuration
     load_from: Optional[Literal['disk', 'hf']] = None  # "disk", "hf", or None
     probe_path: Optional[Path] = None  # Local path for disk loading
-    hf_repo_id: Optional[str] = "andyrdt/hallucination-probes"  # HuggingFace repository ID
+    hf_repo_id: Optional[str] = "tkwiecinski/hallucination-probes"  # HuggingFace repository ID
     
     threshold: float = 0.5  # Classification threshold
     context_window_size: int = 1  # Size of context window for the probe

@@ -4,7 +4,9 @@ This repo contains the implementation of feature probes, for now used for detect
 
 ---
 
-Please note that this is still *work in progress*. The whole code probably will be ~~refactored~~ uploaded soon ;).
+Please note that this is still *work in progress*, some of the scripts and approaches might not be most efficient, docs might not be complete.
+
+For a complete list of TODOs, please refer to the [issues page](https://github.com/swiss-ai/feature-probes/issues).
 
 ## Background 
 
@@ -15,12 +17,10 @@ Probes can be used to detect model's behaviour by using the hidden activations. 
 
 While the code was tested for `Apertus_8B_Instruct_2509` and `Meta_Llama_3.1_8B_Instruct`, it should work for any standard language model from `transformers` library. 
 
-A future work is to validate the codebase for larger models, e.g. `Apertus_70B_Instruct_2509`.
-
 
 ## Installation
 
-The basic installation setup:
+The basic installation setup for a local machine:
 ```
 
 # 1. Clone and enter
@@ -33,20 +33,17 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 3. Create env and install (with CUDA torch on Linux)
 uv sync
 
-# 5. Run a training sweep
-uv run python scripts/train_probe.py --config configs/base.yaml
+# 4. Store your API keys
+mkdir -p ~/keys
+echo "hf_..." > ~/keys/.hf_token
+echo "..."    > ~/keys/.wandb_key
+
+# 5. Run a training job
+uv run python scripts/train_probe.py model=llama training=no_lora dataset=our_long_form
 ```
+---
 
-Installation on Clariden:
-```
-TODO...
-```
-## Known Issues & Workarounds
-To run Apertus, we need `transformers=0.46`. This is conflicted with `safetytooling` version that we use. It is best for now to install latest version of `transformers` manually, after installation.
-
-TODO...
-
-
+To set up the environment on the clariden cluster, please follow the [cluster guide](cluster/README.md).
 
 
 ## License

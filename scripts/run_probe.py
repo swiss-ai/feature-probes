@@ -103,16 +103,16 @@ def run_eval(args: argparse.Namespace) -> None:
     import wandb
     from torch.utils.data import DataLoader
 
-    from probe.config import ProbeConfig
-    from probe.dataset import (
+    from feature_probes.config import ProbeConfig
+    from feature_probes.data.dataset import (
         TokenizedProbingDatasetConfig,
         create_probing_dataset,
         tokenized_probing_collate_fn,
     )
-    from probe.evaluate import evaluate_probe
-    from probe.value_head_probe import setup_probe
+    from feature_probes.evaluation.evaluate import evaluate_probe
+    from feature_probes.probes.value_head_probe import setup_probe
     from transformers import PreTrainedModel
-    from utils.model_utils import load_model_and_tokenizer, resolve_torch_dtype
+    from feature_probes.utils.model_utils import load_model_and_tokenizer, resolve_torch_dtype
 
     tags = [t.strip() for t in args.wandb_tags.split(",") if t.strip()]
 
@@ -192,7 +192,7 @@ def run_train(args: argparse.Namespace) -> None:
     """Delegate to probe/train.py via Hydra subprocess."""
     cmd = [
         sys.executable, "-u",
-        str(REPO_ROOT / "probe" / "train.py"),
+        str(REPO_ROOT / "scripts" / "train_probe.py"),
         f"model={args.model}",
         "training=no_lora",
         "dataset=our_long_form",
@@ -218,7 +218,7 @@ def run_train(args: argparse.Namespace) -> None:
 def main() -> None:
     args = parse_args()
 
-    from utils.probe_loader import LOCAL_PROBES_DIR
+    from feature_probes.utils.probe_loader import LOCAL_PROBES_DIR
     checkpoint = LOCAL_PROBES_DIR / args.probe_id / "probe_head.bin"
     adapter_cfg = LOCAL_PROBES_DIR / args.probe_id / "adapter_config.json"
 

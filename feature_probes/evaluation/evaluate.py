@@ -15,18 +15,18 @@ from transformers import AutoTokenizer
 import argparse
 from dotenv import load_dotenv
 
-from utils.file_utils import save_jsonl, load_yaml
-from utils.metrics import compute_clf_metrics, plot_roc_curves, print_eval_metrics
-from utils.model_utils import load_model_and_tokenizer
+from feature_probes.utils.file_utils import save_jsonl, load_yaml
+from feature_probes.utils.metrics import compute_clf_metrics, plot_roc_curves, print_eval_metrics
+from feature_probes.utils.model_utils import load_model_and_tokenizer
     
-from probe.dataset import (
+from feature_probes.data.dataset import (
     TokenizedProbingDataset,
     create_probing_dataset,
     tokenized_probing_collate_fn
 )
-from probe.config import EvaluationConfig
-from probe.loss import compute_probe_bce_loss
-from probe.value_head_probe import ValueHeadProbe, setup_probe
+from feature_probes.config import EvaluationConfig
+from feature_probes.training.loss import compute_probe_bce_loss
+from feature_probes.probes.value_head_probe import ValueHeadProbe, setup_probe
 
 
 @torch.no_grad()
