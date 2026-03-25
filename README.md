@@ -6,7 +6,7 @@ This repo contains the implementation of feature probes, for now used for detect
 
 Please note that this is still *work in progress*, some of the scripts and approaches might not be most efficient, docs might not be complete.
 
-For a complete list of TODOs, please refer to the [issues page]().
+For a complete list of TODOs, please refer to the [issues page](https://github.com/swiss-ai/feature-probes/issues).
 
 ## Background 
 
