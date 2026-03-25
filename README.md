@@ -4,7 +4,9 @@ This repo contains the implementation of feature probes, for now used for detect
 
 ---
 
-Please note that this is still *work in progress*. The whole code probably will be ~~refactored~~ uploaded soon ;).
+Please note that this is still *work in progress*, some of the scripts and approaches might not be most efficient, docs might not be complete.
+
+For a complete list of TODOs, please refer to the [issues page]().
 
 ## Background 
 
@@ -20,7 +22,7 @@ A future work is to validate the codebase for larger models, e.g. `Apertus_70B_I
 
 ## Installation
 
-The basic installation setup:
+The basic installation setup for a local machine:
 ```
 
 # 1. Clone and enter
@@ -36,16 +38,9 @@ uv sync
 # 5. Run a training sweep
 uv run python scripts/train_probe.py --config configs/base.yaml
 ```
+---
 
-Installation on Clariden:
-```
-TODO...
-```
-## Known Issues & Workarounds
-To run Apertus, we need `transformers=0.46`. This is conflicted with `safetytooling` version that we use. It is best for now to install latest version of `transformers` manually, after installation.
-
-TODO...
-
+To set up the environment on the clariden cluster, please follow the [tutorial](cluster/README.md).
 
 
 

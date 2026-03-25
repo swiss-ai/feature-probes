@@ -74,3 +74,7 @@ sbatch cluster/train.sbatch
 | `pyproject.toml` (new dep) | `sbatch cluster/build.sbatch` |
 | Base image tag | Update `FROM` in `Dockerfile`, then rebuild |
 
+
+
+### Notes
+The current version of [train_multirun](./train_multirun.sbatch) could be buggy, I need to come up with a bit more clear approach here. This is a workaround since the source code didn't work for multigpu setup.
