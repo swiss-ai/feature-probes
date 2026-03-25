@@ -1,6 +1,6 @@
 """Probe module for hallucination detection."""
 
-from .value_head_probe import ValueHeadProbe
+from .probes.value_head_probe import ValueHeadProbe
 from .config import ProbeConfig, TrainingConfig, EvaluationConfig
 from .loss import (
     compute_probe_bce_loss,
@@ -13,7 +13,7 @@ from .types import (
     ProbingItem,
     AnnotatedSpan
 )
-from .dataset import (
+from .data.dataset import (
     TokenizedProbingDataset,
     tokenized_probing_collate_fn,
     create_probing_dataset
