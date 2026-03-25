@@ -243,7 +243,7 @@ The final performance metrics are summarized below:
 | Stability indicator | Baseline | Full-solution | Change |
 |---|---:|---:|---:|
 | Mean final training loss | 8.236 | 0.232 | 97.2% lower |
-| Seed-level loss std (avg over layers) | 11.887 | 0.099 | 72.2% lower |
+| Seed-level loss std (avg over layers) | 11.887 | 0.099 | 99.2% lower |
 
 To add additional context, baseline Llama-3.1-8B-Instruct  run has mean final loss equal to 0.480 - the solutions that I used to mitigate the problem of exploding activations managed to reduce the loss magnitude and reach even lower loss than baseline solution for Llama-3.1-8B-Instruct.
 
