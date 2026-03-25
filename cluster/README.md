@@ -56,8 +56,12 @@ echo "hf_..." > ~/keys/.hf_token_write  # optional, only for HF uploads
 
 **3. Build the image:**
 ```bash
-sbatch cluster/build.sbatch
+# first exec into an interactive job
+srun --account=infra01 --partition=normal --time=01:00:00 --pty bash
+# run the build
+bash cluster/build.sh
 ```
+Unfortunately, this needs to be done in an interactive job, because sbatch does not enable NAT connections from the node.
 
 > Note: optionally, you can 'borrow' an existing `enroot` image, e.g. from here: `/iopsstor/scratch/cscs/tkwiecinski/ce-images/feature-probes+25.06.sqsh`
 
