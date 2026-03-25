@@ -13,14 +13,14 @@ from jaxtyping import Float, Int
 from torch import Tensor
 from peft import PeftModel
 
-from utils.file_utils import save_jsonl
-from utils.metrics import print_eval_metrics
+from feature_probes.utils.file_utils import save_jsonl
+from feature_probes.utils.metrics import print_eval_metrics
 
-from probe.dataset import TokenizedProbingDataset
-from probe.config import TrainingConfig
-from probe.loss import compute_probe_bce_loss, compute_kl_divergence_loss, compute_probe_max_aggregation_loss, mask_high_loss_spans
-from probe.value_head_probe import ValueHeadProbe
-from probe.evaluate import evaluate_probe
+from feature_probes.data.dataset import TokenizedProbingDataset
+from feature_probes.config import TrainingConfig
+from feature_probes.training.loss import compute_probe_bce_loss, compute_kl_divergence_loss, compute_probe_max_aggregation_loss, mask_high_loss_spans
+from feature_probes.probes.value_head_probe import ValueHeadProbe
+from feature_probes.evaluation.evaluate import evaluate_probe
 
 
 class ProbeTrainer(Trainer):

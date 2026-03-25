@@ -13,15 +13,15 @@ import torch.nn as nn
 from peft import PeftModel, get_peft_model
 from transformers import AutoModelForCausalLM, PreTrainedModel
 
-from utils.hooks import add_hooks
-from utils.model_utils import (
+from feature_probes.utils.hooks import add_hooks
+from feature_probes.utils.model_utils import (
     get_model_layers,
     get_model_hidden_size,
     setup_lora_for_layers,
     resolve_torch_dtype,
 )
-from utils.probe_loader import download_probe_from_hf
-from probe.attention_probe import PerTokenAttentionProbe, AttentionProbeHead
+from feature_probes.utils.probe_loader import download_probe_from_hf
+from feature_probes.probes.attention_probe import PerTokenAttentionProbe, AttentionProbeHead
 
 
 class L2Norm(nn.Module):

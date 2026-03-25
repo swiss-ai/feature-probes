@@ -23,14 +23,14 @@ from torch.utils.data import Subset
 from transformers import TrainingArguments
 from dotenv import load_dotenv
 
-from utils.file_utils import save_jsonl, save_json, load_yaml
-from utils.model_utils import load_model_and_tokenizer, print_trainable_parameters, resolve_torch_dtype
-from utils.probe_loader import upload_probe_to_hf
+from feature_probes.utils.file_utils import save_jsonl, save_json, load_yaml
+from feature_probes.utils.model_utils import load_model_and_tokenizer, print_trainable_parameters, resolve_torch_dtype
+from feature_probes.utils.probe_loader import upload_probe_to_hf
 
-from probe.dataset import TokenizedProbingDataset, create_probing_dataset, tokenized_probing_collate_fn
-from probe.config import TrainingConfig
-from probe.value_head_probe import setup_probe
-from probe.trainer import ProbeTrainer
+from feature_probes.data.dataset import TokenizedProbingDataset, create_probing_dataset, tokenized_probing_collate_fn
+from feature_probes.config import TrainingConfig
+from feature_probes.probes.value_head_probe import setup_probe
+from feature_probes.training.trainer import ProbeTrainer
 
 
 def main(training_config: TrainingConfig):

@@ -19,8 +19,8 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm
 
-from probe.dataset import TokenizedProbingDatasetConfig, create_probing_dataset
-from utils.model_utils import load_model_and_tokenizer
+from feature_probes.data.dataset import TokenizedProbingDatasetConfig, create_probing_dataset
+from feature_probes.utils.model_utils import load_model_and_tokenizer
 
 
 @dataclass
