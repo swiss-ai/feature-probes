@@ -17,8 +17,6 @@ Probes can be used to detect model's behaviour by using the hidden activations. 
 
 While the code was tested for `Apertus_8B_Instruct_2509` and `Meta_Llama_3.1_8B_Instruct`, it should work for any standard language model from `transformers` library. 
 
-A future work is to validate the codebase for larger models, e.g. `Apertus_70B_Instruct_2509`.
-
 
 ## Installation
 
@@ -35,13 +33,17 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 3. Create env and install (with CUDA torch on Linux)
 uv sync
 
-# 5. Run a training sweep
-uv run python scripts/train_probe.py --config configs/base.yaml
+# 4. Store your API keys
+mkdir -p ~/keys
+echo "hf_..." > ~/keys/.hf_token
+echo "..."    > ~/keys/.wandb_key
+
+# 5. Run a training job
+uv run python scripts/train_probe.py model=llama training=no_lora dataset=our_long_form
 ```
 ---
 
-To set up the environment on the clariden cluster, please follow the [tutorial](cluster/README.md).
-
+To set up the environment on the clariden cluster, please follow the [cluster guide](cluster/README.md).
 
 
 ## License

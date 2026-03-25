@@ -77,4 +77,8 @@ sbatch cluster/train.sbatch
 
 
 ### Notes
-The current version of [train_multirun](./train_multirun.sbatch) could be buggy, I need to come up with a bit more clear approach here. This is a workaround since the source code didn't work for multigpu setup.
+
+To see some insights about working with the cluster, feel free to browse some [tips](../docs/tips_and_tricks.md).
+
+
+> Please also note: The current version of [train_multirun](./train_multirun.sbatch) could still be buggy, please refer to [issues](https://github.com/swiss-ai/feature-probes/issues/1).
