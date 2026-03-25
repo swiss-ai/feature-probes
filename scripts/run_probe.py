@@ -192,7 +192,7 @@ def run_train(args: argparse.Namespace) -> None:
     """Delegate to probe/train.py via Hydra subprocess."""
     cmd = [
         sys.executable, "-u",
-        str(REPO_ROOT / "probe" / "train.py"),
+        str(REPO_ROOT / "scripts" / "train_probe.py"),
         f"model={args.model}",
         "training=no_lora",
         "dataset=our_long_form",
