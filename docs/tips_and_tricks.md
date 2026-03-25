@@ -58,7 +58,7 @@ For debugging or interactive development, start an interactive job and attach VS
 ```bash
 # 1. Start an interactive session
 srun --account=infra01 --partition=debug --time=00:30:00 \
-    --environment=/users/$USER/feature-probes/cluster/env.toml \
+    --environment=/iopsstor/scratch/cscs/$USER/feature-probes/cluster/env.toml \
     --pty bash
 
 # 2. Inside the session, start a VS Code tunnel

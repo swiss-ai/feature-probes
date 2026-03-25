@@ -172,6 +172,7 @@ def get_num_layers(model_or_name: Union[str, PreTrainedModel]) -> int:
     # If it's a string (model name), use the predefined mapping
     if isinstance(model_or_name, str):
         model_layers_map = {
+            "swiss-ai/Apertus-8B-Instruct-2509": 32,
             "meta-llama/Meta-Llama-3.1-8B-Instruct": 32,
             "meta-llama/Meta-Llama-3.1-70B-Instruct": 80,
             "meta-llama/Meta-Llama-3.1-405B-Instruct": 126,

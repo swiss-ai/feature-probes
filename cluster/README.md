@@ -12,7 +12,7 @@ runtime.
 | File | Purpose |
 |---|---|
 | `Dockerfile` | Container image built on top of NGC PyTorch 25.06 |
-| `build.sbatch` | Builds the image and exports it as a `.sqsh` file to `$SCRATCH/ce-images/` |
+| `build.sh` | Builds the image interactively (run via `srun --pty bash`) |
 | `env.toml` | [Environment Definition File](https://docs.cscs.ch/software/container-engine/run/); defines mounts, env vars, NCCL hooks |
 | `train.sbatch` | Single training run (draft) |
 | `train_multirun.sbatch` | Parallel sweep across a GPU array (draft) |
@@ -75,7 +75,7 @@ sbatch cluster/train.sbatch
 | What changed | Action needed |
 |---|---|
 | Source code | `git pull` inside the running container — no rebuild |
-| `pyproject.toml` (new dep) | `sbatch cluster/build.sbatch` |
+| `pyproject.toml` (new dep) | `bash cluster/build.sh` |
 | Base image tag | Update `FROM` in `Dockerfile`, then rebuild |
 
 
