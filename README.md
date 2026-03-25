@@ -46,14 +46,12 @@ uv run python scripts/train_probe.py model=llama training=no_lora dataset=our_lo
 To set up the environment on the clariden cluster, please follow the [cluster guide](cluster/README.md).
 
 
-## License
-
-Apache 2.0 — see LICENSE.md.
 
 
 ## Acknowledgements
 
 This repo is created by Tymoteusz Kwieciński and supervised by Anna Hedström and Imanol Schlag.
+It is shared under [Apache 2.0](./LICENSE.md) license.
 
 It was developed initailly as a project for Large Scale AI Engineering together with Klejdi Sevdari, Michał Korniak and Jack Peck.
 
