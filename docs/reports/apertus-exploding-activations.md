@@ -183,7 +183,7 @@ volume and distribution:
 
 The hallucination rates (~24% for Apertus, ~26% for Llama) are well-matched,
 and there are no train/test leaks. Apertus completions are slightly shorter on average, which could marginally affect span density, but nothing here
-explains a that significant performance drop for the Apertus probe. The data is definitely not the issue.
+explains that significant performance drop for the Apertus probe. The data is definitely not the issue.
 
 
 
@@ -207,10 +207,7 @@ activations at each layer for both models:
 
 ![layers](./media/explosion.png)
 
-While growing activation norms across layers are expected in transformer
-models (the residual stream accumulates contributions at every layer, see
-[this post](https://turntrout.com/residual-stream-norms-grow-exponentially-over-the-forward-pass)),
-the scale we see here is not.
+Growing activation norms across layers are expected in transformer models (the residual stream accumulates contributions at every layer, see [this post](https://turntrout.com/residual-stream-norms-grow-exponentially-over-the-forward-pass)).
 
 What's not expected is the scale we see here: Apertus activations are over
 **100× larger in magnitude** than Llama's in the deeper layers, which
@@ -311,6 +308,7 @@ stream, normalization alone wouldn't fix it. The fact that it nearly closes the
 gap with Llama suggests that Llama's activations are simply much smaller in
 magnitude, and that by normalizing Apertus activations before the probe we're
 bringing them into a comparable range.
+
 ### LoRA 
 
 As described in the reproduced paper, LoRA help improving the probe performance in general. Because adapters trained across different transformer layers slightly modify the activations to make them more aligned with the task, the probe performance improves:
