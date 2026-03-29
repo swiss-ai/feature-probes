@@ -7,9 +7,6 @@
 
 ## TL;DR
 
-This post covers the investigation process why hallucination probes trained on Apertus-8B-Instruct-2509 were significantly less stable than probes trained on Llama-3.1-Instruct. The main sympthom was a really strong degradation of probe quality in deeper layers and much noisier training loss. We hypothesize that the worse performance comes from exploding activations in deeper layers of Apertus-8B-Instruct-2509 model and proposed few fixes, improving the overall probe performance from `0.7025` to 	`0.8961` AUC and `0.3837` to `0.6802` recall at `0.1` false positive ratio.
-
-
 This post covers our investigation into why hallucination probes trained on
 Apertus-8B-Instruct-2509 were significantly less stable than probes trained on
 Llama-3.1-8B-Instruct. The main symptom was a strong degradation of probe
@@ -19,7 +16,6 @@ optimizer can handle reliably. By addressing this directly, we improved the
 overall probe performance from `0.7025` to `0.8961` AUC and from `0.3837` to
 `0.6802` recall at `0.1` false positive ratio.
 
----
 
 ## Problem description 
 
@@ -32,12 +28,9 @@ and exploring ways to improve probe performance on this model.
 
 
 
-
-Probes trained in the paper are used to detect hallucinated entities in the long-form text. This task is meant to reasemble the usual conversation with the model. A probe in this context is a small model trained on top of an LLM activations from a given layer, which performs a per-token classification task. This approach was proven very useful, e.g. in [Zou et. al.](https://arxiv.org/pdf/2310.01405).  In our setting, the probe was predicting whether a given token from the text is a hallucination or not. 
-
 The probes in that paper are designed to detect hallucinated entities in
-long-form text — the kind of open-ended, multi-sentence responses you'd get in a natural conversation with a chatbot. The idea is that an LLM's internal activations (the hidden states produced at each transformer layer) carry rich information about what the model *knows* and *doesn't know.* A **probe** is a small classifier trained on top of those activations to predict, for each token, whether it's part of a hallucinated span or not. This approach of reading off model internals has been
-shown to work well across a variety of tasks — for instance, [Zou et al.
+long-form text. This is the kind of open-ended, multi-sentence responses you'd get in a natural conversation with a chatbot. The idea is that an LLM's internal activations (the hidden states produced at each transformer layer) carry rich information about what the model *knows* and *doesn't know.* A **probe** is a small classifier trained on top of those activations to predict, for each token, whether it's part of a hallucinated span or not. This approach of reading off model internals has been
+shown to work well across a variety of tasks, for instance, [Zou et al.
 (2023)](https://arxiv.org/pdf/2310.01405) demonstrated that linear probes on
 residual stream activations can reliably extract concepts like truthfulness and sentiment, which motivates using them here, this time in more natural setting.
 
@@ -46,7 +39,7 @@ residual stream activations can reliably extract concepts like truthfulness and 
 ### The dataset description
 
 
-An example from such dataset, that is meant to reasemble natural conversation with an LLM is shown below. One datapoint in the dataset consists of a user question followed by a model response. Certain spans are annotated as supported or not supported by web search:
+An example from such dataset, that is meant to resemble natural conversation with an LLM is shown below. One datapoint in the dataset consists of a user question followed by a model response. Certain spans are annotated as supported or not supported by web search:
 
 ---
 
@@ -65,7 +58,7 @@ An example from such dataset, that is meant to reasemble natural conversation wi
 
 
 
-Below you can see the annoated spans - fragments of text that were confirmed to be false or true by a web-search-based annotation pipeline:
+Below you can see the annotated spans - fragments of text that were confirmed to be false or true by a web-search-based annotation pipeline:
 
 ```
 
@@ -129,9 +122,7 @@ quantitatively close to the originals, as outlined in the section below.
 
 ### Probe training process
 
-Each probe is trained on the activations produced after a specific transformer layer. We followed the original paper and used activations from after layer 30 (both Apertus-8B-Instruct-2509 and Llama-3.1-8B-Instruct have 32 layers in total). Neither the original authors nor we initially performed a systematic layer-wise comparison. this turned out to be a significant omission, as discussed below.
-
-Probes were trained with a simple cross-entropy loss, commonly used in classification tasks. 
+Each probe is trained on the activations produced after a specific transformer layer. We followed the original paper and used activations from after layer 30 (both Apertus-8B-Instruct-2509 and Llama-3.1-8B-Instruct have 32 layers in total). Neither the original authors nor we initially performed a systematic layer-wise comparison. This turned out to be a significant omission, as discussed below.
 
 
 Probes are trained with a standard cross-entropy loss, which is the typical
@@ -142,18 +133,16 @@ original paper also proposed using **LoRA** (Low-Rank Adaptation,
 
 ## The problem
 
-While working on the project, we noticed that the probe trained on Apertus-8B-Instruct-2509 activations, performs much worse on the training set generated with Apertus-8B-Instruct-2509 than the probe trained on Llama-8B-Instruct activations. To better understand this behaviour we performed few evaluations.  <<citation here>>
-
 
 While working on the project, we noticed that the probe trained on
 Apertus-8B-Instruct-2509 activations performs much worse than the equivalent
-probe trained on Llama-3.1-8B-Instruct activations. This result was particularly suprising, because we evaluated both probes on Apertus-generated completions. To understand this better, we ran a layer-wise evaluation: training a separate probe on activations from a subset of the 32 layers, then measuring AUC on a held-out test set.
+probe trained on Llama-3.1-8B-Instruct activations. This result was particularly surprising, because we evaluated both probes on Apertus-generated completions. To understand this better, we ran a layer-wise evaluation: training a separate probe on activations from a subset of the 32 layers, then measuring AUC on a held-out test set.
 
 
 ![layers](./media/layers.png)
 
 
-As you can see in the plot above, the Apertus-8B-Instruct-2509 probe performance drops significantly, after 16th layer. This is unexpected, because the deeper layers in transformers tend to express more abstract concepts. < cite here > Final training loss also explodes around that layer. What is even more suprising, is that the probe trained on activations from Llama-8B-Instruct (a completely different model) performs much better than the probe trained on the Apertus-8B-Instruct-2509 activations.
+As you can see in the plot above, the Apertus-8B-Instruct-2509 probe performance drops significantly, after 16th layer. This is unexpected, because the deeper layers in transformers tend to express more abstract concepts. < cite sth here > Final training loss also explodes around that layer. What is even more surprising, is that the probe trained on activations from Llama-8B-Instruct (a completely different model) performs much better than the probe trained on the Apertus-8B-Instruct-2509 activations.
 
 
 ## Diagnosing the Instability
@@ -166,7 +155,7 @@ the Llama probe, and it's much more spiky across training steps:
 
 ![loss](./media/loss.png)
 
-The plot above shows the scale. Even though the loss is much larger in scale, the training converges. 
+As can be seen above, even though the loss is much larger in scale, the training converges. 
 
 
 ### Dataset validity
@@ -194,7 +183,7 @@ volume and distribution:
 
 The hallucination rates (~24% for Apertus, ~26% for Llama) are well-matched,
 and there are no train/test leaks. Apertus completions are slightly shorter on average, which could marginally affect span density, but nothing here
-explains a that significant performance drop for the Apertus probe. The data is definetely not the issue.
+explains a that significant performance drop for the Apertus probe. The data is definitely not the issue.
 
 
 
@@ -218,7 +207,10 @@ activations at each layer for both models:
 
 ![layers](./media/explosion.png)
 
-While growing activation norm accross layers is expected in transformer models, since the residual stream accumulates contributions at every layer (see [this post](https://turntrout.com/residual-stream-norms-grow-exponentially-over-the-forward-pass)).
+While growing activation norms across layers are expected in transformer
+models (the residual stream accumulates contributions at every layer, see
+[this post](https://turntrout.com/residual-stream-norms-grow-exponentially-over-the-forward-pass)),
+the scale we see here is not.
 
 What's not expected is the scale we see here: Apertus activations are over
 **100× larger in magnitude** than Llama's in the deeper layers, which
@@ -280,24 +272,22 @@ It turned out that the proposed solutions helped with stabilizing the runs and i
 
 ### Stronger precision
 
-Using `fp32` instead of `bf16` for probe training improved stability. The
-loss became less noisy across seeds. This improvement though had no meaningful impact on final performance:
+The intuition behind using a stronger precision to train the probe is that the float with more bits can express the large number with much better precision. Since observed activations were really large, we suspected that by changing the precision to `float32` the probe might be able to produce more stable results. It doesn't  change the geometry of the activations. The probe is still trying to find a decision boundary in a space with very high variance.
 
 ![precision](./media/precision.png)
 
-The intuition behind using a stronger precision to train the probe is that the float with more bits can express the large number with much better precision. Since observed activations were really large, we suspected that by changing the precision to `float32` the probe might be able to produce more stable results. It doesn't not change the geometry of the activations. The probe is still trying to find a decision boundary in a space with very high variance.
 
+Using `fp32` instead of `bf16` for probe training improved stability. The
+loss became less noisy across seeds. This improvement though had no meaningful impact on final performance.
 
 ### Smaller learning rate
 
 
-
-Reducing the learning rate only slightly, from 1e-3 to 3e-4 also helped to stabilize the runs and slightly improved the performance:
+Large learning rate can prevent the gradient descent-based algorithm from convergence. If the learning rate is too big for given setup, the final estimation can just scatter around the local minimum, not being able to reach a good result. Similar behaviour was observed in our case. The probe performance was different in each run and the training loss was not decreasing.
 
 ![lr](./media/lr.png)
 
-
-Large learning rate can prevent the gradient descent-based algorithm from convergence. If the learning rate is too big for given setup, the final estimation can just scatter around the local minimum, not being able to reach a good result. Similar behaviour was observed in our case. The probe performance was different in each run and the training loss was not decreasing.
+Reducing the learning rate only slightly, from 1e-3 to 3e-4 also helped to stabilize the runs and slightly improved the performance.
 
 The improvement here is modest on its own, but it compounds well with the other fixes, as described later.
 
@@ -323,7 +313,7 @@ magnitude, and that by normalizing Apertus activations before the probe we're
 bringing them into a comparable range.
 ### LoRA 
 
-As described in the reproduced paper, LoRA help improving the probe performance in general. Because adapters trained accross different transformer layers slightly modify the activations to make them more aligned with the task, the probe perfomance improves:
+As described in the reproduced paper, LoRA help improving the probe performance in general. Because adapters trained across different transformer layers slightly modify the activations to make them more aligned with the task, the probe performance improves:
 
 
 
