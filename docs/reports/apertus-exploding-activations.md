@@ -183,7 +183,7 @@ volume and distribution:
 
 The hallucination rates (~24% for Apertus, ~26% for Llama) are well-matched,
 and there are no train/test leaks. Apertus completions are slightly shorter on average, which could marginally affect span density, but nothing here
-explains that significant performance drop for the Apertus probe. The data is definitely not the issue.
+explains that significant performance drop for the Apertus probe. We also compared few datapoints manually, searching for artifacts and incorrect annotations, but couldn't find any significant problems. The data is definitely not the issue.
 
 
 
