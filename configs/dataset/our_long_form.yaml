@@ -7,7 +7,7 @@ lambda_kl: 0.5
 
 train_datasets:
   - dataset_id: "longfact_train"
-    hf_repo: "tymciurymciu/longfact-test-split"
+    hf_repo: "tkwiecinski/longfact-test-split"
     subset: "${model.data_subset}"  
     split: "train"
     max_length: 1536
@@ -23,7 +23,7 @@ train_datasets:
 # Eval datasets are identical across all your runs, so they stay hardcoded here
 eval_datasets:
   - dataset_id: "longfact_test_llama"
-    hf_repo: "tymciurymciu/longfact-test-split"
+    hf_repo: "tkwiecinski/longfact-test-split"
     subset: "Meta_Llama_3.1_8B_Instruct"
     split: "test"
     max_length: 1536
@@ -33,7 +33,7 @@ eval_datasets:
     shuffle: false
 
   - dataset_id: "longfact_test_apertus"
-    hf_repo: "tymciurymciu/longfact-test-split"
+    hf_repo: "tkwiecinski/longfact-test-split"
     subset: "Apertus_8B_Instruct_2509"
     split: "test"
     max_length: 1536
