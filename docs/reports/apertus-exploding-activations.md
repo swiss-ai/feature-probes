@@ -1,171 +1,108 @@
-# Active Interpretability with Hallucination Probes: Exploding Activations in Apertus-8B-Instruct-2509
+# Active interpretability with hallucination probes: exploding activations in Apertus-8B-Instruct-2509
 
 **Author:** Tymoteusz Kwieciński
-**Date:** 2026-03-17
+**Date:** 2026-05-05
 
 ---
 
 ## TL;DR
 
-This post covers our investigation into why hallucination probes trained on
-Apertus-8B-Instruct-2509 were significantly less stable than probes trained on
-Llama-3.1-8B-Instruct. The main symptom was a strong degradation of probe
-quality in deeper layers and much noisier training loss. We hypothesize that
-this comes from **exploding activations** in deeper layers of the Apertus model, which is a problem where hidden state magnitudes grow far beyond what the probe's
-optimizer can handle reliably. By addressing this directly, we improved the
-overall probe performance from `0.7025` to `0.8961` AUC and from `0.3837` to
-`0.6802` recall at `0.1` false positive ratio.
+Hallucination probes are small classifiers that read an LLM's internal states to flag when the model is making things up. When we trained them on Apertus-8B-Instruct-2509, they were far less stable than the same probes trained on Llama-3.1-8B-Instruct. We traced the problem to exploding activations in deeper layers: hidden state magnitudes grow so large that the probe's optimizer can't learn a reliable decision boundary. By applying four targeted fixes (fp32 precision, lower learning rate, LayerNorm, and LoRA adapters), we improved probe performance from `0.7025` to `0.8961` AUC and from `0.3837` to `0.6802` recall at `0.1` false positive ratio.
 
+More importantly, this is a case study in *active interpretability*: the probes told us something was wrong with the model's internals before we knew what to look for. The failure pattern pointed us to a hypothesis, and we verified it with simple interventions.
 
-## Problem description 
+## Problem description
 
 ### Background
 
-We extend the work of [Obeso et al.](https://arxiv.org/abs/2509.03531) by
-reproducing their hallucination probe methodology for Apertus-8B-Instruct-2509
-and exploring ways to improve probe performance on this model.
+Every LLM hallucinates sometimes. The usual response is to catch false claims after the fact, with retrieval or external fact-checking. But what if the model's own internal states already carry a signal about what it knows and what it's making up?
 
+That's the premise behind hallucination probes. [Zou et al. (2023)](https://arxiv.org/pdf/2310.01405) showed that linear probes on an LLM's hidden states can reliably extract concepts like truthfulness and sentiment. [Obeso et al.](https://arxiv.org/abs/2509.03531) applied this to detect hallucinated entities in long-form chatbot responses: they train a small classifier on the activations from a specific transformer layer, and the classifier predicts whether each token is part of a hallucinated span.
 
+We reproduced their methodology for Apertus-8B-Instruct-2509 and Llama-3.1-8B-Instruct. The probes worked well on Llama. On Apertus, they didn't. The investigation that followed led us to treat probes not just as classifiers, but as diagnostic instruments: their failure pattern told us what was wrong with the model before we knew what to look for.
 
+### The dataset
 
-The probes in that paper are designed to detect hallucinated entities in
-long-form text. This is the kind of open-ended, multi-sentence responses you'd get in a natural conversation with a chatbot. The idea is that an LLM's internal activations (the hidden states produced at each transformer layer) carry rich information about what the model *knows* and *doesn't know.* A **probe** is a small classifier trained on top of those activations to predict, for each token, whether it's part of a hallucinated span or not. This approach of reading off model internals has been
-shown to work well across a variety of tasks, for instance, [Zou et al.
-(2023)](https://arxiv.org/pdf/2310.01405) demonstrated that linear probes on
-residual stream activations can reliably extract concepts like truthfulness and sentiment, which motivates using them here, this time in more natural setting.
-
-
-
-### The dataset description
-
-
-An example from such dataset, that is meant to resemble natural conversation with an LLM is shown below. One datapoint in the dataset consists of a user question followed by a model response. Certain spans are annotated as supported or not supported by web search:
+The probes need labeled data: model-generated text where each span is tagged as factually supported or not. An example from our dataset looks like this. A user asks a question, the model generates a long response, and specific claims are checked against web sources:
 
 ---
 
 **User**: Tell me about Formula 1's current testing regulations, particularly focusing on restrictions during the season, pre-season testing allowances, rookie driver testing requirements, tire testing protocols, and any special testing permissions for development work.
 
-**Model**: As of my knowledge cutoff in 2024, Formula 1's testing regulations have undergone significant changes over the years, with the primary goal of reducing costs and promoting more competitive racing. Here's an overview of the current testing regulations, focusing on the points you've mentioned:
+**Model**: As of my knowledge cutoff in 2024, Formula 1's testing regulations have undergone significant changes over the years [...]
 
 ### 1. Restrictions during the season
-- **Seasonal Testing**: *Formula 1 teams are not allowed to conduct any official testing during the season*. This is to ensure that all teams have an equal opportunity to prepare for the championship and to prevent any team from gaining an unfair advantage through extensive testing.
-- **Private Testing**: Teams are allowed to conduct private testing, but this is heavily restricted. Private testing is typically limited to a few days per year and is usually conducted on private tracks or simulators.
+
+- **Seasonal Testing**: *Formula 1 teams are not allowed to conduct any official testing during the season*. [...]
+- **Private Testing**: Teams are allowed to conduct private testing, but this is heavily restricted. [...]
 
 ### 2. Pre-season testing allowances
-- **Pre-season Testing**: Formula 1 teams are allowed to conduct pre-season testing, but this is also heavily restricted. The pre-season testing is usually conducted at the beginning of the year, typically at the same track where the first race of the season will be held.
+
+- **Pre-season Testing**: Formula 1 teams are allowed to conduct pre-season testing [...]
 - **Testing Days**: The number of testing days is limited. For example, in 2024, each team was allowed a maximum of *100 kilometers of testing per day*, with a total of *1500 kilometers allowed across all pre-season testing sessions*.
 
+The annotated spans look like this:
 
-
-
-Below you can see the annotated spans - fragments of text that were confirmed to be false or true by a web-search-based annotation pipeline:
-
-```
-
-[
-  {
-    "index": 356,
-    "label": "Supported",
-    "span": "Formula 1 teams are not allowed to conduct any official testing during the season",
-    "verification_note": "The FIA regulations restrict in-season testing to control costs and maintain fairness."
-  },
-  {
-    "index": 875,
-    "label": "Supported",
-    "span": "Pre-season Testing",
-    "verification_note": "Pre-season testing is allowed under FIA regulations with specified limits."
-  },
-  {
-    "index": 1260,
-    "label": "Not Supported",
-    "span": "100 kilometers of testing per day",
-    "verification_note": "No specific information found on a 100 kilometers per day limit; regulations normally specify total pre-season test days instead."
-  },
-  {
-    "index": 1311,
-    "label": "Not Supported",
-    "span": "1500 kilometers allowed across all pre-season testing sessions",
-    "verification_note": "No specific mileage limit per season found; FIA usually regulates the number of test days, not mileage."
-  }
-]
-```
+    [
+      {
+        "index": 356,
+        "label": "Supported",
+        "span": "Formula 1 teams are not allowed to conduct any official testing during the season",
+        "verification_note": "The FIA regulations restrict in-season testing to control costs and maintain fairness."
+      },
+      {
+        "index": 1260,
+        "label": "Not Supported",
+        "span": "100 kilometers of testing per day",
+        "verification_note": "No specific information found on a 100 kilometers per day limit; regulations normally specify total pre-season test days instead."
+      },
+      {
+        "index": 1311,
+        "label": "Not Supported",
+        "span": "1500 kilometers allowed across all pre-season testing sessions",
+        "verification_note": "No specific mileage limit per season found; FIA usually regulates the number of test days, not mileage."
+      }
+    ]
 
 ---
 
+The dataset [`LongFact++`](https://huggingface.co/datasets/obalcells/longfact-annotations) from Obeso et al. was built in three steps: collect question prompts from [`LongFact`](https://arxiv.org/abs/2403.18802) (a Google-curated corpus), generate model answers, and annotate them using a larger LLM with a web search tool.
 
-The dataset [`LongFact++`](https://huggingface.co/datasets/obalcells/longfact-annotations), which was used in the paper to train hallucination probes was collected in 3 steps:
-1. Question prompt collection
-2. Model's answers generation
-3. Generation annotation using larger LLM with websearch tool
+Web-search-based annotation matters here because it grounds the labels in real sources. An LLM judge without internet access might confirm a false claim if it looks plausible. Obeso et al. validated the pipeline in two ways. A human annotator independently labeled 50 random spans and agreed with the LLM's labels 84% of the time (though this only measures precision, not recall). On a controlled dataset with injected factual errors, the pipeline caught 80.6% of them (729/904), with a 15.8% false positive rate on correct content.
 
-Using a web-search-based annotation is important because it grounds the labels in real sources. An LLM judge without internet access might confidently confirm a false claim if it appears plausible, whereas a grounded web search can actually check it. Obeso et al. validated the pipeline in two ways. First, a human annotator independently labeled a random sample of 50 entity spans and agreed with the LLM's labels in 84% of cases — though this only measures precision, not recall. Second, on a controlled dataset built by paraphrasing Wikipedia passages into conversational text and injecting known factual errors, the annotation pipeline detected 80.6% of injected hallucinations (729/904), with a false positive rate of 15.8% on unchanged factual content.
+Obeso et al. extended LongFact to ~20k questions across diverse topics, generated answers using several models (Llama-8B-Instruct, Llama-70B-Instruct, Mistral-Small-24B-Instruct-2501, and others), and annotated them using Anthropic Claude Sonnet 4 with web search.
 
+To build probes for Apertus, we ran both the generation and annotation pipelines ourselves, producing our own version of LongFact++, available on [HuggingFace](https://huggingface.co/datasets/tkwiecinski/longfact-test-split). We generated data for both Apertus-8B-Instruct-2509 and Llama-3.1-8B-Instruct. A perfect reproduction wasn't possible because the original pipeline wasn't fully documented, but the resulting datasets are close to the originals in both volume and distribution, as shown later. The full reproduction details are in the [project report](https://github.com/swiss-ai/feature-probes/blob/main/docs/reports/hallucination_detection.pdf).
 
-The questions were sourced from [`LongFact`](https://arxiv.org/abs/2403.18802),
-a Google-curated corpus of general-knowledge questions. Obeso et al. extended
-this to ~20k questions across diverse topics, then generated answers using
-various open-source models (Llama-8B-Instruct, Llama-70B-Instruct,
-Mistral-Small-24B-Instruct-2501, and others), and finally annotated them using
-Anthropic Claude Sonnet 4 with a web search tool.
+### Probe training
 
-To reproduce probes for Apertus, we had to run both the generation and
-annotation pipelines ourselves, which produced our version of `LongFact++`,
-publicly available on
-[HuggingFace](https://huggingface.co/datasets/tkwiecinski/longfact-test-split).
-We generated data for both Apertus-8B-Instruct-2509 and Llama-3.1-8B-Instruct.
-The full details of this reproduction are in the [project
-report](https://github.com/swiss-ai/feature-probes/blob/main/docs/reports/hallucination_detection.pdf).
-The original pipeline documentation was not well enough documented and shared, thus a perfect 1:1 match
-wasn't possible, but the resulting datasets are qualitatively and
-quantitatively close to the originals, as outlined in the section below.
+The choice of which transformer layer to probe matters more than we initially realized. Each probe is trained on the activations from a single layer. Both Apertus and Llama have 32 layers total. Following Obeso et al., we initially trained probes on layer 30 activations only. Neither the original authors nor we ran a systematic layer-by-layer comparison at first, but this mattered more than we expected.
 
-
-### Probe training process
-
-Each probe is trained on the activations produced after a specific transformer layer. We followed the original paper and used activations from after layer 30 (both Apertus-8B-Instruct-2509 and Llama-3.1-8B-Instruct have 32 layers in total). Neither the original authors nor we initially performed a systematic layer-wise comparison. This turned out to be a significant omission, as discussed below.
-
-
-Probes are trained with a standard cross-entropy loss, which is the typical
-choice for binary classification tasks. To further improve performance, the
-original paper also proposed using **LoRA** (Low-Rank Adaptation,
-[Hu et al., 2021](https://arxiv.org/abs/2106.09685)). LoRA are small trainable adapters that project the activations into a lower-dimensional space before the classifier head. The intuition is that LoRA can surface task-relevant structure in the activations that a linear probe operating on the full hidden dimension might miss. For more details on the full training setup, refer to the [reproduced paper](https://arxiv.org/abs/2509.03531).
-
+The probes use a standard cross-entropy loss for binary classification. To improve performance, Obeso et al. also used LoRA (Low-Rank Adaptation, [Hu et al., 2021](https://arxiv.org/abs/2106.09685)): small trainable adapters that project activations into a lower-dimensional space before the classifier head. The idea is that LoRA can surface task-relevant structure that a linear probe on the full hidden dimension might miss. For the full training setup, see the [original paper](https://arxiv.org/abs/2509.03531).
 
 ## The problem
 
+The Apertus probes performed much worse than the Llama probes. This was surprising on its own, but it gets stranger: we evaluated both probes on Apertus-generated text, and the probe trained on *Llama* activations still outperformed the one trained on Apertus's own activations.
 
-While working on the project, we noticed that the probe trained on
-Apertus-8B-Instruct-2509 activations performs much worse than the equivalent
-probe trained on Llama-3.1-8B-Instruct activations. This result was particularly surprising, because we evaluated both probes on Apertus-generated completions. To understand this better, we ran a layer-wise evaluation: training a separate probe on activations from a subset of the 32 layers, then measuring AUC on a held-out test set.
+To understand where things break down, we trained separate probes on activations from each of the 32 layers and measured AUC on a held-out test set.
 
+[![layers](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/layers.png)]
 
-![layers](./media/layers.png)
+The plot shows AUC (y-axis) for probes trained on each layer (x-axis), with separate lines for Apertus (orange) and Llama (blue). The Llama probe performance is relatively stable across layers, hovering around 0.85 AUC from layer 10 onward. The Apertus probe tracks Llama's performance until around layer 16, then drops sharply, falling below 0.70 by the final layers. This is unexpected: deeper layers in transformers typically encode more abstract, higher-level representations, so you'd expect probe performance to improve or at least stay flat. Instead, something is actively degrading the signal in Apertus's later layers. The training loss for those layers also becomes erratic, which points to an optimization problem rather than a missing signal.
 
+## Diagnosing the instability
 
-As you can see in the plot above, the Apertus-8B-Instruct-2509 probe performance drops significantly, after 16th layer. This is unexpected, because the deeper layers in transformers tend to express more abstract concepts. < cite sth here > Final training loss also explodes around that layer. What is even more surprising, is that the probe trained on activations from Llama-8B-Instruct (a completely different model) performs much better than the probe trained on the Apertus-8B-Instruct-2509 activations.
+### Loss scale
 
+The first thing we checked was whether the training loss itself looked different between the two models.
 
-## Diagnosing the Instability
+[![loss](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/loss.png)]
 
-### Loss scale comparison
-
-The first thing we checked was the raw scale of the training loss. The
-cross-entropy loss for the Apertus probe is roughly **100× larger** than for
-the Llama probe, and it's much more spiky across training steps:
-
-![loss](./media/loss.png)
-
-As can be seen above, even though the loss is much larger in scale, the training converges. 
-
+The plot shows training loss over optimization steps for both models. Two things stand out. First, the Apertus loss (orange) is roughly 100x larger than Llama's (blue) in absolute terms. Second, it's much spikier, with large jumps between consecutive steps. Despite this, the Apertus loss does trend downward, so the training does converge in a loose sense, but the probe still performs badly. The 100x scale difference was our first concrete clue that something is off about the raw magnitude of Apertus activations.
 
 ### Dataset validity
 
-To verify if the source of the observed issue comes from the model, and not the data that was generated by our pipeline, we revisited the dataset validity. We compared both
-datasets along several dimensions: annotation quality, hallucination rates,
-completion lengths, span lengths, and train/test overlap. The table below shows
-that our datasets are very similar to those from Obeso et al., both in terms of
-volume and distribution:
-
+Before blaming the model, we checked whether our data pipeline introduced the problem. We compared both datasets along several dimensions: annotation quality, hallucination rates, completion lengths, span lengths, and train/test overlap.
 
 
 | Source | Model | Split | Rows | Spans/Row | Invalid Rate | Halluc. Rate | Completion Length (mean) | Completion Length (median) | Span Length (mean) | Span Length (90th percentile) |
@@ -181,203 +118,114 @@ volume and distribution:
 | paper | Gemma-2-9B | train | 1,495 | 10.94 | 0.048 | 0.186 | 2,837 | 2,781 | 19.47 | 37 |
 
 
-The hallucination rates (~24% for Apertus, ~26% for Llama) are well-matched,
-and there are no train/test leaks. Apertus completions are slightly shorter on average, which could marginally affect span density, but nothing here
-explains that significant performance drop for the Apertus probe. We also compared few datapoints manually, searching for artifacts and incorrect annotations, but couldn't find any significant problems. The data is definitely not the issue.
 
+The hallucination rates are well-matched (~24% for Apertus, ~26% for Llama), there are no train/test leaks, and manual spot-checks of individual datapoints didn't reveal annotation artifacts. Apertus completions are slightly shorter on average, but nothing here explains the performance gap. The data is not the issue.
 
+### Activation clustering
 
-### Activations clustering
+With the dataset ruled out, we looked at the activations directly. If they encode hallucination-relevant information, you'd expect some separation between hallucinated and supported tokens when you project them down to 2D.
 
+[![activations](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/activations.png)]
 
-With the dataset ruled out, we looked directly at the activations. One useful sanity check is to visualize them with PCA. If the activations contain signal that is relevant for hallucination detection, you would expect some separation between hallucinated and supported tokens. 
+Both models show some clustering in PCA space, which is encouraging: the signal for hallucination detection is there. But the scale of the two plots is very different. Llama activations form relatively tight clusters. Apertus activations are far more spread out (check the axis ranges). The hallucination signal exists in Apertus, but it's buried in much more variance.
 
+### Activation norms
 
-![layers](./media/activations.png)
+To put numbers on the spread we saw in PCA, we measured the mean L2 norm of activations at each layer for both models.
 
-Both Apertus and Llama activations show some clustering, even though the characteristic of the clusters differ a lot. 
+[![explosion](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/explosion.png)]
 
-The key difference between two models' activations is the **spread**: Apertus activations are far more dispersed in the PCA projection (take a look at the scale of the plot). It looks like the signal for hallucination detection is there, but it is much more noisy.
-
-
-### Activations norm
-
-To quantify what we saw in the PCA, we directly measured the mean L2 norm of
-activations at each layer for both models:
-
-![layers](./media/explosion.png)
-
-Growing activation norms across layers are expected in transformer models (the residual stream accumulates contributions at every layer, see [this post](https://turntrout.com/residual-stream-norms-grow-exponentially-over-the-forward-pass)).
-
-What's not expected is the scale we see here: Apertus activations are over
-**100× larger in magnitude** than Llama's in the deeper layers, which
-quantitatively matches the 100× loss difference we observed earlier. Such large activations might pose a problem for further calculations with them, particularly because usual computational methods are adapted to work with numbers of small magnitude.
-
+The plot shows mean activation L2 norm (y-axis) across layers (x-axis). Some growth is normal in transformers: the residual stream accumulates contributions from each layer, so norms tend to increase (see [this post](https://turntrout.com/residual-stream-norms-grow-exponentially-over-the-forward-pass) for background). But the scale of this increase is the problem here. Llama norms grow, but steadily and increasing its norm less than 100 times through the whole model, which is a usual behavior.  Apertus norms grow exponentially and are over 100x larger than Llama's in the deeper layers. This 100x ratio matches the 100x loss difference we observed earlier. Activations this large cause trouble for bf16 arithmetic (which has limited precision for large numbers), scatter gradients during optimization, and make it hard for the probe to find a stable decision boundary.
 
 ## Hypothesis
 
+The evidence all points in one direction: Apertus-8B-Instruct-2509 has exploding activations in its deeper layers. The magnitudes grow far beyond what standard probe training can handle, causing numerical instability in bf16, noisy gradients, and degraded probe performance.
 
-The evidence consistently supports one explanation: **exploding activations**
-in Apertus-8B-Instruct-2509. The activations in deeper layers reach magnitudes
-that cause numerical instability in `bf16` arithmetic, scatter gradients during
-optimization, and ultimately prevent the probe from learning a reliable
-decision boundary.
+Julian Minder independently flagged this issue and pointed us toward several potential fixes.
 
-This issue was independently raised by Julian Minder, whom we contacted for
-additional context. He also pointed us toward several potential fixes. 
-
-One long-term fix would be to address the root cause in the model itself and
-release an Apertus version without this exponential growth. In the meantime,
-however, we wanted to verify the hypothesis empirically: if the instability
-truly comes from activation magnitudes, then interventions that normalize or
-dampen those magnitudes should noticeably improve probe stability and
-performance.
-
-
+The long-term fix is to address the root cause in the model itself and release an Apertus version without this exponential growth. But we wanted to test the hypothesis first: if the instability really comes from activation magnitudes, then interventions that normalize or dampen those magnitudes should improve probe stability and performance. If the problem were something else, like missing hallucination signal in Apertus's residual stream, these fixes would do nothing.
 
 ## Proposed solutions
 
+We tried four interventions, each targeting the problem from a different angle:
 
+- **fp32 instead of bf16**: bf16 has limited range for large numbers, so rounding errors can cascade during training. Since fp32 is able represent much larger numbers using it should help.
 
-We tried four interventions, each targeting the problem from a slightly
-different angle — numerical precision, optimization dynamics, input
-normalization, and learned projection:
+- **Smaller learning rate**: large activations produce large gradients. With a big learning rate on top of that, parameter updates overshoot and the optimizer never settles. We reduced it from 1e-3 to 3e-4.
 
-- **Stronger precision (`fp32` instead of `bf16`)**: `bf16` has limited
-  range for large numbers; `fp32` can represent the same values with
-  significantly better accuracy, which might prevent rounding errors from
-  cascading during training.
-- **Smaller learning rate**: when activations are
-  large, gradients can be large too, and a big learning rate amplifies this
-  into unstable updates. Slowing down the optimizer gives it more room to
-  navigate around the instability.
-- **LayerNorm before the probe**: normalizing the activations to zero mean
-  and unit variance before feeding them to the probe directly removes the
-  magnitude problem at the input level. This is essentially the same trick
-  used inside transformers themselves to keep training stable
-  ([Ba et al., 2016](https://arxiv.org/abs/1607.06450)).
-- **LoRA adapters**:  as described in the original paper, LoRA learns a
-  low-rank projection of the activations. Beyond improving task alignment,
-  this projection may act as an implicit compression step that filters out
-  some of the high-variance noise in the Apertus activations.
+- **LayerNorm before the probe**: normalize activations to zero mean and unit variance before the probe sees them. This removes the magnitude problem directly. It also improves numerical accuracy, since floating point is much more precise near zero than at extreme scales ([Ba et al., 2016](https://arxiv.org/abs/1607.06450)).
 
-
+- **LoRA adapters**: as in the original paper, LoRA learns a low-rank projection of the activations. It helps with task alignment, but may also act as compression that filters out some of the high-variance noise.
 
 ## Results
 
-It turned out that the proposed solutions helped with stabilizing the runs and improving performance, though to very different degrees. Now, we will go over each of the solutions.
+The four fixes helped to different degrees. We go through each one below, then show the combined effect.
 
 ### Stronger precision
 
-The intuition behind using a stronger precision to train the probe is that the float with more bits can express the large number with much better precision. Since observed activations were really large, we suspected that by changing the precision to `float32` the probe might be able to produce more stable results. It doesn't  change the geometry of the activations. The probe is still trying to find a decision boundary in a space with very high variance.
+Switching from bf16 to fp32 doesn't change the geometry of the activations. The probe is still trying to find a decision boundary in a space with very high variance. But it gives the floating point representation more room to encode those large numbers without rounding errors.
 
-![precision](./media/precision.png)
+[![precision](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/precision.png)]
 
-
-Using `fp32` instead of `bf16` for probe training improved stability. The
-loss became less noisy across seeds. This improvement though had no meaningful impact on final performance.
+The plot shows training loss curves across multiple random seeds for bf16 (left) and fp32 (right). The fp32 runs are noticeably less noisy: the loss curves are smoother and more consistent across seeds. But this stability gain didn't translate to better final performance. The probe AUC barely changed. Better precision helps the optimizer run more smoothly, but the underlying problem (huge activation magnitudes) is still there.
 
 ### Smaller learning rate
 
+When activations are large, gradients are large too. A learning rate that works fine for normal-scale activations can cause the optimizer to overshoot and scatter around the minimum instead of converging to it.
 
-Large learning rate can prevent the gradient descent-based algorithm from convergence. If the learning rate is too big for given setup, the final estimation can just scatter around the local minimum, not being able to reach a good result. Similar behaviour was observed in our case. The probe performance was different in each run and the training loss was not decreasing.
+[![lr](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/lr.png)]
 
-![lr](./media/lr.png)
-
-Reducing the learning rate only slightly, from 1e-3 to 3e-4 also helped to stabilize the runs and slightly improved the performance.
-
-The improvement here is modest on its own, but it compounds well with the other fixes, as described later.
+Reducing the learning rate from 1e-3 to 3e-4 stabilized the runs and slightly improved performance. The loss curves became less erratic and more consistent across seeds. The improvement on its own is modest, but it compounds well with the other fixes.
 
 ### LayerNorm
-As we assumed, the activations in the deeper layers of Apertus-8B-Instruct-2509
-have a very large magnitude. Another way to stabilize the runs and improve
-performance is to apply LayerNorm before the probe. This technique normalizes
-the activations to zero mean and unit variance, ensuring that the probe input
-is optimally scaled. This can yield a similar effect to using better precision —
-floating point arithmetic is much more accurate near 0 than at very large
-scales, so by re-centering the activations we effectively get more reliable
-gradient updates for free ([Ba et al., 2016](https://arxiv.org/abs/1607.06450)).
 
-![ln](./media/layernorm.png)
+If the core problem is activation magnitude, the most direct fix is to normalize the activations before the probe sees them.
 
-Using LayerNorm significantly improved the probe performance, making it almost
-as good as the probe trained on Llama-3.1-8B-Instruct activations. This
-strongly supports our exploding activations hypothesis. If the problem were
-something deeper, like missing hallucination signal in Apertus's residual
-stream, normalization alone wouldn't fix it. The fact that it nearly closes the
-gap with Llama suggests that Llama's activations are simply much smaller in
-magnitude, and that by normalizing Apertus activations before the probe we're
-bringing them into a comparable range.
+[![ln](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/layernorm.png)]
 
-### LoRA 
+LayerNorm made the biggest single difference. With normalization, the Apertus probe performs almost as well as the Llama probe. This is strong evidence for the exploding activations hypothesis. If the problem were deeper, like Apertus simply not encoding hallucination signal in its residual stream, normalization wouldn't help. The fact that it nearly closes the gap with Llama tells us the signal was always there. It was just buried in magnitudes that the probe couldn't handle.
 
-As described in the reproduced paper, LoRA help improving the probe performance in general. Because adapters trained across different transformer layers slightly modify the activations to make them more aligned with the task, the probe performance improves:
+### LoRA
 
+LoRA adapters learn a low-rank projection that aligns the activations more closely with the classification task. In the Apertus case, there's a second benefit: compressing the high-dimensional, high-variance activations into a more compact representation where the probe can find a cleaner decision boundary.
 
+[![lora](https://raw.githubusercontent.com/swiss-ai/feature-probes/refs/heads/main/docs/reports/media/lora-apertus.png)]
 
-![lora](./media/lora-apertus.png)
+LoRA improved performance both with and without the other fixes, consistent with what Obeso et al. reported for other models. The improvement stacks with LayerNorm and the other interventions.
 
+### Combined results
 
-LoRA's benefit here is twofold. As shown in the original paper, the learned
-low-rank projection aligns the activations more closely with the classification
-task. But in the Apertus case, it likely also helps by compressing the
-high-dimensional, high-variance activations into a more compact representation
-where the probe can find a cleaner decision boundary.
-
-
-### Full Solution Performance
-
-The combined effect of all four interventions is summarized below:
+The full solution (all four fixes combined) looks like this:
 
 | Probe model (train) | Evaluation set | Metric | Baseline mean | Full-solution mean | Absolute improvement |
-|---|---|---|---:|---:|---:|
+| --- | --- | --- | --- | --- | --- |
 | Apertus-8B-Instruct-2509 | Apertus-8B-Instruct-2509 | AUC | 0.7025 | 0.8961 | +0.1935 |
 | Apertus-8B-Instruct-2509 | Apertus-8B-Instruct-2509 | R@0.1 | 0.3837 | 0.6802 | +0.2966 |
- 
 
-The AUC improvement of ~0.19 is substantial. This puts the Apertus probe in a
-range comparable to what the original paper reports for Llama-class models. The
-recall at 0.1 FPR improvement (+0.30) is even more important for practical use,
-since real-time hallucination detection systems typically operate under tight
-false positive budgets. More than doubling recall at that threshold makes the
-probe genuinely usable in a production context.
+The AUC jump of ~0.19 puts the Apertus probe in the same range as what Obeso et al. report for Llama-class models. The recall improvement at 0.1 FPR (+0.30) matters even more in practice: real-time hallucination detection systems operate under tight false positive budgets, and more than doubling recall at that threshold makes the probe usable rather than a curiosity.
 
-### Stability summary 
+### Stability
 
-The stability gains are just as striking as the performance gains:
+The stability gains are just as important as the performance gains:
 
 | Stability indicator | Baseline | Full-solution | Change |
-|---|---:|---:|---:|
+| --- | --- | --- | --- |
 | Mean final training loss | 8.236 | 0.232 | 97.2% lower |
 | Seed-level loss std (avg over layers) | 11.887 | 0.099 | 99.2% lower |
 
+For reference, the baseline Llama probe achieves a mean final loss of 0.480. Our full-solution Apertus probe reaches 0.232, which is actually lower than the Llama baseline, despite starting from activations that were causing 100x larger losses. The near-elimination of seed-level variance (99.2% reduction) means probe training is now reliable and reproducible, which is a basic requirement for any real deployment.
 
-For context: the baseline Llama probe achieves a mean final loss of 0.480. Our
-full-solution Apertus probe reaches 0.232, which is actually *lower* than the Llama
-baseline, despite starting from activations that were causing 100× larger
-losses. The near-elimination of seed-level variance (99.2% reduction) means
-the probe training is now reliable and reproducible, which is a basic
-prerequisite for any serious deployment.
+## Why is this exciting?
 
-## Conclusions and Future Work
+The finding itself, that Apertus has exploding activations, is useful but not surprising on its own. Large activation norms in deep transformers are a known failure mode. What we think is more interesting is how we found it and what that says about the methodology.
 
-In this short doc, we showcased how an *active interpretability* approach can
-help in improving the performance of machine learning models. We went through a
-simple observation, to problem diagnostics, setting the hypothesis and finding
-the solution to the discovered problem.
+We didn't set out to diagnose activation instability. We set out to build hallucination probes. The probes failed, and their failure pattern told us something was wrong with the model's internals. The layer-by-layer AUC drop was the first clue. The 100x loss difference, the PCA spread, and the norm measurements followed. Each step narrowed the hypothesis until we had a clear diagnosis and a set of targeted fixes.
 
-What started as a routine comparison between two models turned into a
-well-grounded investigation showing that Apertus-8B-Instruct-2509 has a problem
-with exploding activations in its deeper layers. We successfully mitigated this
-by proposing a few targeted changes to the probe training setup, and showed that
-the resulting probes are not only stable but can be further improved. Crucially,
-this also confirms that Apertus's residual stream does encode hallucination
-signal, and that our initial approach was simply unable to extract it reliably.
+That's the active interpretability angle. Instead of treating probes as black-box classifiers (they either work or they don't), you treat them as instruments. When a probe fails, the way it fails is informative. A performance drop in deeper layers means something different than a uniform failure across all layers. A 100x loss difference points you toward numerical issues, not data problems.
 
-Our future work will include adapting the probes for a production-wide setting.
-We also look forward to verifying whether the activation behaviour changes in
-upcoming Apertus releases, as fixing the root cause at the model level would
-make these workarounds unnecessary.
+We think this approach carries over to other settings. We've seen similar activation behavior in other models, and the same diagnostic pattern applies: train a probe, observe how it fails, use the failure pattern to form a hypothesis, test the hypothesis with targeted interventions. The fixes here were simple (LayerNorm, lower learning rate, fp32, LoRA). The hard part was knowing which fixes to try, and the probes told us that.
+
+Our next steps include adapting these probes for production use. We also expect the activation growth to be addressed in upcoming Apertus releases, which would make these workarounds unnecessary, but still a really interesting tool for applied interpretability.
 
 ## Acknowledgements
 
